@@ -150,9 +150,12 @@ private struct PaneIcon: View {
 
 private struct GeneralPane: View {
     @AppStorage(SettingsKey.showMenuBarIcon) private var showMenuBarIcon = true
+    @Environment(AppModel.self) private var model
     @AppStorage(SettingsKey.restoreOnLaunch) private var restoreOnLaunch = true
     @State private var openAtLogin = false
     @State private var loginError: String?
+    @State private var confirmsReset = false
+    @State private var confirmsUninstall = false
 
     var body: some View {
         Section("Startup") {
@@ -175,10 +178,34 @@ private struct GeneralPane: View {
             Text("With the icon hidden, WallVue keeps playing; open it from the Dock or Applications.")
         }
 
-        Section("Your Data") {
+        Section {
             LabeledContent("Library folder") {
                 Button("Show in Finder") { NSWorkspace.shared.open(AppPaths.support) }
             }
+            LabeledContent {
+                Button("Reset…") { confirmsReset = true }
+            } label: {
+                Text("Reset WallVue")
+                Text("Stops the wallpaper, restores your macOS wallpaper, and removes your library and settings.")
+            }
+            LabeledContent {
+                Button("Uninstall…", role: .destructive) { confirmsUninstall = true }
+            } label: {
+                Text("Uninstall WallVue")
+                Text("Does everything Reset does, then moves WallVue to the Trash.")
+            }
+        } header: {
+            Text("Your Data")
+        }
+        .confirmationDialog("Reset WallVue?", isPresented: $confirmsReset) {
+            Button("Reset", role: .destructive) { model.resetEverything() }
+        } message: {
+            Text("Your wallpapers, schedule and settings are deleted from this Mac. Your original video files are not touched. This can't be undone.")
+        }
+        .confirmationDialog("Uninstall WallVue?", isPresented: $confirmsUninstall) {
+            Button("Uninstall", role: .destructive) { model.uninstall() }
+        } message: {
+            Text("WallVue restores your macOS wallpaper, deletes its library and settings, and moves itself to the Trash. This can't be undone.")
         }
     }
 
@@ -464,7 +491,20 @@ private struct DisplaysPane: View {
 }
 
 private struct ShortcutsPane: View {
+    @AppStorage(SettingsKey.globalShortcuts) private var globalShortcuts = true
+
     var body: some View {
+        Section {
+            Toggle(isOn: $globalShortcuts) {
+                Text("Shortcuts that work in every app")
+                Text("They work while you're in another app, with WallVue's window closed.")
+            }
+            row("Play or pause", "⌃⌥⌘P")
+            row("Sound on or off", "⌃⌥⌘M")
+        } header: {
+            Text("In Every App")
+        }
+
         Section {
             row("Play or pause", "⌥⌘P")
             row("Next wallpaper", "⌥⌘→")
@@ -475,8 +515,6 @@ private struct ShortcutsPane: View {
             row("Settings", "⌘,")
         } header: {
             Text("While WallVue Is Open")
-        } footer: {
-            Text("Shortcuts that work in every app are not available yet.")
         }
     }
 

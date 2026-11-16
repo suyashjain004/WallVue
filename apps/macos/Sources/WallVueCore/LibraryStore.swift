@@ -160,6 +160,11 @@ public final class LibraryStore {
         save()
     }
 
+    /// Removes every wallpaper and every file the app created for them.
+    public func removeAll() {
+        for wallpaper in wallpapers { remove(wallpaper) }
+    }
+
     private func update(_ id: UUID, _ change: (inout Wallpaper) -> Void) {
         guard let index = wallpapers.firstIndex(where: { $0.id == id }) else { return }
         change(&wallpapers[index])

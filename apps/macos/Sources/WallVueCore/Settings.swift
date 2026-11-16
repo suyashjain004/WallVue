@@ -8,6 +8,7 @@ public enum SettingsKey {
     public static let playPreviewsWhileBrowsing = "playPreviewsWhileBrowsing"
     public static let restoreOnLaunch = "restoreOnLaunch"
     public static let hasCompletedOnboarding = "hasCompletedOnboarding"
+    public static let globalShortcuts = "globalShortcuts"
     // Wallpaper
     public static let playbackMode = "playbackMode"
     public static let scaling = "scaling"
@@ -73,6 +74,7 @@ public enum SettingsDefaults {
         SettingsKey.playPreviewsWhileBrowsing: false,
         SettingsKey.restoreOnLaunch: true,
         SettingsKey.hasCompletedOnboarding: false,
+        SettingsKey.globalShortcuts: true,
         SettingsKey.playbackMode: PlaybackMode.app.rawValue,
         SettingsKey.scaling: ScalingMode.fill.rawValue,
         SettingsKey.playbackRate: 1.0,

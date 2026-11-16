@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Observation
 import SwiftUI
 import WallVueCore
@@ -34,6 +35,8 @@ final class AppModel {
     let library: LibraryStore
     let engine: WallpaperEngine
     let stats = ProcessStats()
+    private let hotKeys = GlobalHotKeys()
+    private var defaultsObserver: NSObjectProtocol?
 
     var tab: AppTab = .home
     /// The wallpaper whose full-window detail view is open, if any.
@@ -49,6 +52,71 @@ final class AppModel {
         SettingsDefaults.register()
         library = LibraryStore()
         engine = WallpaperEngine(library: library)
+        updateHotKeys()
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.updateHotKeys() }
+        }
+    }
+
+    // MARK: Shortcuts that work in every app
+
+    private func updateHotKeys() {
+        let wanted = UserDefaults.standard.bool(forKey: SettingsKey.globalShortcuts)
+        guard wanted != hotKeys.isRegistered else { return }
+        guard wanted else {
+            hotKeys.unregisterAll()
+            return
+        }
+        let modifiers = controlKey | optionKey | cmdKey
+        hotKeys.register([
+            // ⌃⌥⌘P — play or pause
+            .init(keyCode: kVK_ANSI_P, modifiers: modifiers) { [weak self] in
+                guard let engine = self?.engine else { return }
+                if engine.isActive { engine.togglePause() } else { engine.step(by: 1) }
+            },
+            // ⌃⌥⌘M — sound on or off
+            .init(keyCode: kVK_ANSI_M, modifiers: modifiers) {
+                let defaults = UserDefaults.standard
+                defaults.set(!defaults.bool(forKey: SettingsKey.muted), forKey: SettingsKey.muted)
+            },
+        ])
+    }
+
+    // MARK: Reset and uninstall
+
+    /// Stops the wallpaper, puts the system wallpaper and screen saver back,
+    /// and deletes the library, caches and settings. The app keeps running
+    /// and starts fresh.
+    func resetEverything() {
+        detailID = nil
+        isUploadShown = false
+        recentlyImported = []
+        engine.stop()
+        library.removeAll()
+        engine.resetSchedule()
+        for folder in [AppPaths.thumbnails, AppPaths.stills, AppPaths.support.appendingPathComponent("LockScreen")] {
+            let items = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+            for item in items { try? FileManager.default.removeItem(at: item) }
+        }
+        ThumbnailCache.shared.clear()
+        if let domain = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: domain)
+        }
+        SettingsDefaults.register()
+        tab = .home
+    }
+
+    /// Reset, then remove the login item and the data folder, move the app
+    /// to the Trash and quit.
+    func uninstall() {
+        resetEverything()
+        try? LoginItem.set(false)
+        try? FileManager.default.removeItem(at: AppPaths.support)
+        NSWorkspace.shared.recycle([Bundle.main.bundleURL]) { _, _ in
+            Task { @MainActor in NSApp.terminate(nil) }
+        }
     }
 
     func select(_ tab: AppTab) {

@@ -192,6 +192,13 @@ final class WallpaperEngine {
         schedule.save()
     }
 
+    /// Back to the four empty default times.
+    func resetSchedule() {
+        schedule = DaySchedule()
+        schedule.save()
+        lastScheduledWallpaper = nil
+    }
+
     private func evaluateSchedule() {
         guard settings.scheduleEnabled else { return }
         let now = Calendar.current.dateComponents([.hour, .minute], from: Date())
