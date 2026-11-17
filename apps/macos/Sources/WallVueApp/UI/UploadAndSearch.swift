@@ -147,7 +147,7 @@ private struct ImportedRow: View {
                 get: { wallpaper.category },
                 set: { model.library.setCategory($0, for: wallpaper) }
             )) {
-                ForEach(Wallpaper.categories, id: \.self) { Text($0).tag($0) }
+                ForEach(model.categories, id: \.self) { Text($0).tag($0) }
             }
             .labelsHidden()
             .frame(width: 130)

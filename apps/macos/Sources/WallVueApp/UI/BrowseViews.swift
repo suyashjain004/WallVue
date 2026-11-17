@@ -226,7 +226,7 @@ struct ExploreView: View {
 
     private var results: [BrowseItem] {
         var items = everything
-        if let category { items = items.filter { $0.category == category } }
+        if let category { items = items.filter { $0.category.caseInsensitiveCompare(category) == .orderedSame } }
         if only4K { items = items.filter(\.is4K) }
         if onlyUltrawide { items = items.filter(\.isUltrawide) }
         return BrowseItem.sorted(items, by: sort)
@@ -265,7 +265,7 @@ struct ExploreView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 Chip(title: "All", isSelected: category == nil) { category = nil }
-                                ForEach(Wallpaper.categories, id: \.self) { name in
+                                ForEach(model.categories, id: \.self) { name in
                                     Chip(title: name, isSelected: category == name) { category = name }
                                 }
                             }

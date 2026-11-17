@@ -5,9 +5,14 @@
         --credit "Jane Doe" --license CC0-1.0 --source https://example.com/original
 
 It makes the thumbnail, attaches the video to the wallpapers release on
-GitHub and adds the entry to index.json. Afterwards commit and push the
-catalogue folder; every copy of the app shows the new wallpaper the next
-time it refreshes its list.
+GitHub and adds the entry to index.json. With --publish it also commits and
+pushes the catalogue folder, and then every copy of the app shows the new
+wallpaper the next time it refreshes its list. Without --publish, commit and
+push the catalogue folder yourself.
+
+--category may be one of the built-in categories or a new name. A new
+category gets its own filter in WallVue 0.1.1 and later; older copies list
+its wallpapers under All and find them by search.
 
 Only add videos you are allowed to redistribute. --license must name the
 licence the original creator gave, and --credit must name them.
@@ -37,13 +42,19 @@ def main():
     parser = argparse.ArgumentParser(description="Add one wallpaper to the catalogue.")
     parser.add_argument("video", type=Path)
     parser.add_argument("--title", required=True)
-    parser.add_argument("--category", required=True, choices=CATEGORIES)
+    parser.add_argument("--category", required=True, help="one of " + ", ".join(CATEGORIES) + ", or a new name")
     parser.add_argument("--credit", required=True, help="who made it")
     parser.add_argument("--license", required=True, help="the licence it was published under, e.g. CC0-1.0 or CC-BY-4.0")
     parser.add_argument("--source", help="link to the original")
     parser.add_argument("--release", default="wallpapers-1", help="release that holds the video (default: wallpapers-1)")
     parser.add_argument("--no-upload", action="store_true", help="skip the upload (attach the file yourself)")
+    parser.add_argument("--publish", action="store_true", help="also commit and push the catalogue folder")
     args = parser.parse_args()
+
+    # Use the spelling already in use, so "ocean" and "Ocean" stay one category.
+    wanted = " ".join(args.category.split())
+    if not wanted or len(wanted) > 24:
+        sys.exit("A category name needs 1 to 24 characters")
 
     if not args.video.is_file():
         sys.exit(f"{args.video} is not a file")
@@ -52,6 +63,9 @@ def main():
 
     index_file = CATALOGUE / "index.json"
     index = json.loads(index_file.read_text())
+    known = CATEGORIES + [entry["category"] for entry in index["wallpapers"]]
+    category = next((name for name in known if name.lower() == wanted.lower()), wanted)
+    is_new_category = category.lower() not in (name.lower() for name in known)
     slug = re.sub(r"[^a-z0-9]+", "-", args.title.lower()).strip("-")
     if not slug:
         sys.exit("The title needs at least one letter or digit")
@@ -86,7 +100,7 @@ def main():
             run("gh", "release", "upload", args.release, str(staged), "--repo", REPO, "--clobber")
 
     entry = {
-        "id": slug, "title": args.title, "kind": "video", "category": args.category,
+        "id": slug, "title": args.title, "kind": "video", "category": category,
         "width": stream["width"], "height": stream["height"],
         "duration": round(duration, 2), "frameRate": frame_rate,
         "size": args.video.stat().st_size,
@@ -100,10 +114,20 @@ def main():
     index["updated"] = datetime.date.today().isoformat()
     index_file.write_text(json.dumps(index, indent=2) + "\n")
 
-    print(f"Added {args.title} ({slug}).")
+    print(f"Added {args.title} ({slug}) to {category}.")
+    if is_new_category:
+        print(f"{category} is a new category. WallVue 0.1.1 and later show a filter for it; older copies list it under All.")
     if args.no_upload:
         print(f"Attach the video to the {args.release} release as {name}.")
-    print("Now: git add catalogue && git commit -m \"Add " + args.title + " to the catalogue\" && git push")
+    message = f"Add {args.title} to the catalogue"
+    if args.publish:
+        repo = CATALOGUE.parent
+        run("git", "-C", str(repo), "add", "catalogue")
+        run("git", "-C", str(repo), "commit", "-m", message)
+        run("git", "-C", str(repo), "push")
+        print("Published. Copies of the app show it the next time they refresh their list.")
+    else:
+        print(f'Now: git add catalogue && git commit -m "{message}" && git push')
 
 
 if __name__ == "__main__":

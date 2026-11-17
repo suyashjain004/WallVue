@@ -119,6 +119,12 @@ final class AppModel {
 
     func isGetting(_ entry: CatalogueEntry) -> Bool { getting.contains(entry.id) }
 
+    /// Categories to offer as filters and choices: the built-in ones plus
+    /// any new ones the catalogue or the library uses.
+    var categories: [String] {
+        Wallpaper.categories(including: catalogue.entries.map(\.category) + library.wallpapers.map(\.category))
+    }
+
     func thumbnailURL(for item: BrowseItem) -> URL? {
         switch item {
         case .local(let wallpaper): return wallpaper.thumbnailURL

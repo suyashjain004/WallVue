@@ -274,7 +274,7 @@ struct WallpaperCard: View {
             model.library.toggleFavorite(wallpaper)
         }
         Menu("Category") {
-            ForEach(Wallpaper.categories, id: \.self) { category in
+            ForEach(model.categories, id: \.self) { category in
                 Button {
                     model.library.setCategory(category, for: wallpaper)
                 } label: {

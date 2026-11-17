@@ -15,6 +15,21 @@ public enum WallpaperOrigin: String, Codable, Sendable {
 public struct Wallpaper: Identifiable, Codable, Hashable, Sendable {
     public static let categories = ["Nature", "Space", "Abstract", "City", "Ocean", "Minimal", "Dark", "Others"]
 
+    /// The built-in categories plus any others in use (a catalogue entry or
+    /// a library wallpaper may name a new one): built-ins first in their
+    /// usual order, then new ones alphabetically, and "Others" always last.
+    public static func categories(including used: [String]) -> [String] {
+        var seen = Set(categories.map { $0.lowercased() })
+        var extras: [String] = []
+        for name in used {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seen.insert(trimmed.lowercased()).inserted else { continue }
+            extras.append(trimmed)
+        }
+        extras.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        return categories.filter { $0 != "Others" } + extras + ["Others"]
+    }
+
     public let id: UUID
     public var title: String
     /// File name inside `AppPaths.media`.

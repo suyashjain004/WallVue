@@ -48,13 +48,22 @@ point to.
 ## Adding a wallpaper
 
 ```bash
-python3 tools/add_wallpaper.py clip.mp4 --title "Misty Forest" --category Nature \
-    --credit "Jane Doe" --license CC0-1.0 --source https://example.com/original
-git add catalogue && git commit -m "Add Misty Forest to the catalogue" && git push
+catalogue/publish.sh clip.mp4 "Misty Forest" Nature "Jane Doe" CC0-1.0 https://example.com/original
 ```
 
-The command makes the thumbnail (960×540 JPEG), attaches the video to the
-newest `wallpapers-N` release and adds the entry to `index.json`. People see
-the wallpaper the next time the app refreshes its list; no app update is
-needed. Start a new release (`--release wallpapers-2`) when one reaches 1,000
+That one command makes the thumbnail (960×540 JPEG), attaches the video to the
+`wallpapers-1` release, adds the entry to `index.json`, commits and pushes.
+People see the wallpaper the next time the app refreshes its list; no app
+update is needed. The arguments are the video, its title, its category, who
+made it, the licence they published it under, and optionally a link to the
+original.
+
+The category can be a built-in one (Nature, Space, Abstract, City, Ocean,
+Minimal, Dark, Others) or a new name. A new category gets its own filter in
+WallVue 0.1.1 and later; older copies list its wallpapers under All and find
+them by search.
+
+`tools/add_wallpaper.py` is the same thing with named options, for when you
+want to review the change before pushing (leave out `--publish`) or use
+another release (`--release wallpapers-2`). Start a new release (`--release wallpapers-2`) when one reaches 1,000
 files.

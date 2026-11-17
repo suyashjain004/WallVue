@@ -58,6 +58,23 @@ final class CatalogueFormatTests: XCTestCase {
     }
 }
 
+final class CategoryTests: XCTestCase {
+    func testNewCategoriesJoinTheBuiltInOnesBeforeOthers() {
+        let all = Wallpaper.categories(including: ["Nature", "Superheroes", "  Anime ", "superheroes", "", "Others"])
+        XCTAssertEqual(all, ["Nature", "Space", "Abstract", "City", "Ocean", "Minimal", "Dark", "Anime", "Superheroes", "Others"])
+    }
+
+    func testWithNothingNewTheListIsTheBuiltInOne() {
+        XCTAssertEqual(Wallpaper.categories(including: ["Dark", "ocean"]), Wallpaper.categories)
+    }
+
+    func testACatalogueEntryMayNameANewCategory() throws {
+        let json = "{\"id\": \"s\", \"title\": \"S\", \"category\": \"Superheroes\", \"license\": \"CC0-1.0\", \"credit\": \"Someone\", \"files\": [\"https://example.com/s.mp4\"]}"
+        let entries = try Catalogue.entries(inIndexJSON: indexJSON([json]))
+        XCTAssertEqual(entries.first?.category, "Superheroes")
+    }
+}
+
 final class DownloadLimitTests: XCTestCase {
     private func downloaded(_ title: String, mb: Int64, playedDaysAgo: Double?, favorite: Bool = false) -> Wallpaper {
         Wallpaper(
