@@ -34,6 +34,7 @@ final class AppModel {
 
     let library: LibraryStore
     let engine: WallpaperEngine
+    let catalogue: CatalogueStore
     let stats = ProcessStats()
     private let hotKeys = GlobalHotKeys()
     private var defaultsObserver: NSObjectProtocol?
@@ -41,6 +42,10 @@ final class AppModel {
     var tab: AppTab = .home
     /// The wallpaper whose full-window detail view is open, if any.
     var detailID: UUID?
+    /// The catalogue wallpaper whose page is open, if any.
+    var catalogueDetailID: String?
+    /// Catalogue wallpapers being downloaded or added right now.
+    private(set) var getting = Set<String>()
     var isUploadShown = false
     var isSearchShown = false
     var isImporterPresented = false
@@ -67,6 +72,11 @@ final class AppModel {
         SettingsDefaults.register()
         library = LibraryStore()
         engine = WallpaperEngine(library: library)
+        let override = UserDefaults.standard.string(forKey: SettingsKey.catalogueURL).flatMap { URL(string: $0) }
+        catalogue = CatalogueStore(
+            remote: override ?? AppInfo.catalogueURL,
+            bundled: Bundle.main.resourceURL?.appendingPathComponent("catalogue", isDirectory: true)
+        )
         updateHotKeys()
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
@@ -99,12 +109,93 @@ final class AppModel {
         ])
     }
 
+    // MARK: Catalogue
+
+    /// Catalogue wallpapers that aren't in the library yet.
+    var notDownloaded: [CatalogueEntry] {
+        let have = Set(library.wallpapers.compactMap(\.catalogueID))
+        return catalogue.entries.filter { !have.contains($0.id) }
+    }
+
+    func isGetting(_ entry: CatalogueEntry) -> Bool { getting.contains(entry.id) }
+
+    func thumbnailURL(for item: BrowseItem) -> URL? {
+        switch item {
+        case .local(let wallpaper): return wallpaper.thumbnailURL
+        case .remote(let entry): return catalogue.thumbnailFile(for: entry)
+        }
+    }
+
+    func open(_ item: BrowseItem) {
+        switch item {
+        case .local(let wallpaper): open(wallpaper)
+        case .remote(let entry): open(entry)
+        }
+    }
+
+    func open(_ entry: CatalogueEntry) {
+        if let wallpaper = library.wallpaper(catalogueID: entry.id) {
+            open(wallpaper)
+            return
+        }
+        isSearchShown = false
+        isUploadShown = false
+        detailID = nil
+        catalogueDetailID = entry.id
+    }
+
+    /// Downloads a catalogue wallpaper into the library, and optionally
+    /// puts it on the desktop when it arrives.
+    func get(_ entry: CatalogueEntry, andSet: Bool) {
+        if let existing = library.wallpaper(catalogueID: entry.id) {
+            if andSet { engine.setWallpaper(existing) }
+            return
+        }
+        guard getting.insert(entry.id).inserted else { return }
+        Task {
+            defer { getting.remove(entry.id) }
+            do {
+                try makeRoom(for: entry)
+                let file = try await catalogue.download(entry)
+                let wallpaper = try await library.addDownloaded(entry, file: file, thumbnail: catalogue.thumbnailFile(for: entry))
+                if andSet { engine.setWallpaper(wallpaper) }
+                if catalogueDetailID == entry.id {
+                    catalogueDetailID = nil
+                    detailID = wallpaper.id
+                }
+            } catch {
+                library.lastError = "Couldn't download “\(entry.title)”. \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Keeps downloads under the limit in Settings → Storage by removing
+    /// the downloaded wallpapers played longest ago.
+    private func makeRoom(for entry: CatalogueEntry) throws {
+        let limit = Int64(max(1, UserDefaults.standard.integer(forKey: SettingsKey.downloadLimitGB))) * 1_000_000_000
+        let showing = Set(library.wallpapers.filter { engine.isShowing($0) }.map(\.id))
+        guard let leaving = Catalogue.evictions(
+            toFit: entry.size, limit: limit, downloaded: library.downloaded, keeping: showing
+        ) else { throw CatalogueError.noRoom(needed: entry.size, limit: limit) }
+        for wallpaper in leaving { remove(wallpaper) }
+    }
+
+    /// What the corner toast should say, if anything is in progress.
+    var activityText: String? {
+        if library.importsInProgress > 0 { return "Adding \(library.importsInProgress)…" }
+        guard let id = getting.sorted().first, let entry = catalogue.entry(id: id) else { return nil }
+        let fraction = catalogue.progress[id] ?? 1
+        let more = getting.count > 1 ? " and \(getting.count - 1) more" : ""
+        return fraction < 1 ? "Downloading \(entry.title)\(more) · \(Int(fraction * 100))%" : "Adding \(entry.title)\(more)…"
+    }
+
     // MARK: Playing in the background
 
     /// Hides every window and the Dock icon and leaves the wallpaper
     /// running. The menu bar item, or opening WallVue again, brings it back.
     func enterBackground() {
         detailID = nil
+        catalogueDetailID = nil
         isSearchShown = false
         loopSource = nil
         parkedWindows = NSApp.windows.filter { $0.isVisible && $0.level == .normal && $0.canBecomeMain }
@@ -185,12 +276,13 @@ final class AppModel {
     /// and starts fresh.
     func resetEverything() {
         detailID = nil
+        catalogueDetailID = nil
         isUploadShown = false
         recentlyImported = []
         engine.stop()
         library.removeAll()
         engine.resetSchedule()
-        for folder in [AppPaths.thumbnails, AppPaths.stills, AppPaths.support.appendingPathComponent("LockScreen")] {
+        for folder in [AppPaths.thumbnails, AppPaths.stills, AppPaths.catalogueThumbnails, AppPaths.support.appendingPathComponent("LockScreen")] {
             let items = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
             for item in items { try? FileManager.default.removeItem(at: item) }
         }
@@ -216,6 +308,7 @@ final class AppModel {
     func select(_ tab: AppTab) {
         self.tab = tab
         detailID = nil
+        catalogueDetailID = nil
         isUploadShown = false
         isSearchShown = false
     }
@@ -223,11 +316,13 @@ final class AppModel {
     func open(_ wallpaper: Wallpaper) {
         isSearchShown = false
         isUploadShown = false
+        catalogueDetailID = nil
         detailID = wallpaper.id
     }
 
     func showUpload() {
         detailID = nil
+        catalogueDetailID = nil
         isSearchShown = false
         isUploadShown = true
     }
@@ -264,6 +359,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = AppModel.shared
         model.engine.start()
         model.checkForUpdates(userInitiated: false)
+        Task { await model.catalogue.refresh() }
 
         // Started by macOS at login: play the wallpaper without putting a
         // window in the user's way.
@@ -398,6 +494,8 @@ struct AppCommands: Commands {
                 .keyboardShortcut(.leftArrow, modifiers: [.option, .command])
             Button("Shuffle Now") { model.engine.shuffleNow() }
             Divider()
+            Button("Refresh Catalogue") { Task { await model.catalogue.refresh(force: true) } }
+                .keyboardShortcut("r")
             Button("Stop Wallpaper") { model.engine.stop() }
                 .disabled(!model.engine.isActive)
         }

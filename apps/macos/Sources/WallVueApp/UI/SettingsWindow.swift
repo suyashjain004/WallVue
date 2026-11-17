@@ -573,6 +573,7 @@ private struct ShortcutsPane: View {
 
 private struct StoragePane: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(SettingsKey.downloadLimitGB) private var downloadLimitGB = 10
     @State private var refresh = 0
 
     var body: some View {
@@ -596,6 +597,29 @@ private struct StoragePane: View {
             }
         }
         .id(refresh)
+
+        Section {
+            LabeledContent("Downloaded from the catalogue",
+                           value: Format.bytes(model.library.downloaded.reduce(Int64(0)) { $0 + $1.fileSize }))
+            Picker("Keep downloads under", selection: $downloadLimitGB) {
+                ForEach([2, 5, 10, 20, 50], id: \.self) { Text("\($0) GB").tag($0) }
+            }
+            LabeledContent {
+                Button(model.catalogue.isRefreshing ? "Checking…" : "Check Now") {
+                    Task { await model.catalogue.refresh(force: true) }
+                }
+                .disabled(model.catalogue.isRefreshing)
+            } label: {
+                Text("\(model.catalogue.entries.count) wallpapers in the catalogue")
+                Text(model.catalogue.refreshFailed
+                     ? "The online list couldn't be reached; showing the last one saved."
+                     : "New ones appear on their own. WallVue checks when it opens and while you browse.")
+            }
+        } header: {
+            Text("Catalogue")
+        } footer: {
+            Text("When a new download would go over the limit, WallVue removes the downloaded wallpapers you played longest ago. Favorites, your own uploads and the wallpaper on screen are never removed.")
+        }
 
         Section {
             ForEach(model.library.wallpapers) { wallpaper in
@@ -671,7 +695,7 @@ private struct HelpPane: View {
         }
 
         Section("Privacy") {
-            Text("WallVue has no account, no analytics and no tracking. Your wallpapers and settings stay on this Mac. The only thing it fetches is the daily update check from GitHub, which you can turn off in General.")
+            Text("WallVue has no account, no analytics and no tracking. Your wallpapers and settings stay on this Mac. The only things it fetches are the catalogue list and the wallpapers you choose to download, and the daily update check, which you can turn off in General. All of them come from GitHub.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -723,7 +747,7 @@ private struct AboutPane: View {
         }
 
         Section("Licence") {
-            Text("Free and open source under the MIT licence. No trial, no paid tier, no account.")
+            Text("Free and open source under the GNU General Public License, version 3. No trial, no paid tier, no account. The catalogue's wallpapers have their own licence, shown on each one.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

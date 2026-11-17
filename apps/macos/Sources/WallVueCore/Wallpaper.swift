@@ -32,6 +32,12 @@ public struct Wallpaper: Identifiable, Codable, Hashable, Sendable {
     public var dateAdded: Date
     public var lastPlayed: Date?
     public var playCount: Int
+    /// For wallpapers downloaded from the catalogue: its id there, and the
+    /// licence and credit it was published with.
+    public var catalogueID: String?
+    public var license: String?
+    public var credit: String?
+    public var sourceURL: URL?
 
     public init(
         id: UUID = UUID(),
@@ -49,7 +55,11 @@ public struct Wallpaper: Identifiable, Codable, Hashable, Sendable {
         isFavorite: Bool = false,
         dateAdded: Date = Date(),
         lastPlayed: Date? = nil,
-        playCount: Int = 0
+        playCount: Int = 0,
+        catalogueID: String? = nil,
+        license: String? = nil,
+        credit: String? = nil,
+        sourceURL: URL? = nil
     ) {
         self.id = id
         self.title = title
@@ -67,6 +77,10 @@ public struct Wallpaper: Identifiable, Codable, Hashable, Sendable {
         self.dateAdded = dateAdded
         self.lastPlayed = lastPlayed
         self.playCount = playCount
+        self.catalogueID = catalogueID
+        self.license = license
+        self.credit = credit
+        self.sourceURL = sourceURL
     }
 
     public var fileURL: URL { AppPaths.media.appendingPathComponent(fileName) }

@@ -40,6 +40,8 @@ public enum SettingsKey {
     public static let pauseWhenScreenShared = "pauseWhenScreenShared"
     // Storage
     public static let downloadLimitGB = "downloadLimitGB"
+    /// Optional: another address for the catalogue list (testing, or a fork).
+    public static let catalogueURL = "catalogueURL"
 }
 
 public enum ScalingMode: String, CaseIterable, Identifiable, Sendable {

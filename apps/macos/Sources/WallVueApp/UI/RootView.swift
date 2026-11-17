@@ -17,7 +17,7 @@ struct RootView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if model.detailID == nil {
+            if model.detailID == nil && model.catalogueDetailID == nil {
                 VStack(spacing: 0) {
                     TopBar()
                     Spacer(minLength: 0)
@@ -32,9 +32,9 @@ struct RootView: View {
                     .transition(.opacity)
             }
 
-            if model.library.importsInProgress > 0 {
+            if let activity = model.activityText {
                 VStack {
-                    ProgressToast(text: "Adding \(model.library.importsInProgress)…")
+                    ProgressToast(text: activity)
                         .padding(.top, Theme.topBarHeight + 8)
                     Spacer()
                 }
@@ -46,8 +46,9 @@ struct RootView: View {
         .background(Theme.canvas)
         .ignoresSafeArea()
         .animation(.snappy(duration: 0.25), value: model.detailID)
+        .animation(.snappy(duration: 0.25), value: model.catalogueDetailID)
         .animation(.snappy(duration: 0.2), value: model.isSearchShown)
-        .animation(.snappy(duration: 0.2), value: model.library.importsInProgress)
+        .animation(.snappy(duration: 0.2), value: model.activityText == nil)
         .fileImporter(
             isPresented: $model.isImporterPresented,
             allowedContentTypes: [.movie, .image],
@@ -85,6 +86,10 @@ struct RootView: View {
         if let id = model.detailID, let wallpaper = model.library.wallpaper(id: id) {
             DetailView(wallpaper: wallpaper)
                 .id(wallpaper.id)
+                .transition(.opacity)
+        } else if let entry = model.catalogue.entry(id: model.catalogueDetailID) {
+            CatalogueDetailView(entry: entry)
+                .id(entry.id)
                 .transition(.opacity)
         } else if model.isUploadShown {
             UploadView()

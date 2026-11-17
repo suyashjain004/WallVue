@@ -7,11 +7,13 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var heroIndex = 0
 
-    /// Up to six featured wallpapers: favourites first, then the newest.
-    private var featured: [Wallpaper] {
+    /// Up to six featured wallpapers: favourites first, then the rest of
+    /// the library, then the catalogue.
+    private var featured: [BrowseItem] {
         let videos = model.library.videos
         let ordered = videos.filter(\.isFavorite) + videos.filter { !$0.isFavorite }
-        return Array(ordered.prefix(6))
+        let catalogue = model.notDownloaded.filter { $0.kind == .video }
+        return Array((ordered.map(BrowseItem.local) + catalogue.map(BrowseItem.remote)).prefix(6))
     }
 
     var body: some View {
@@ -21,9 +23,10 @@ struct HomeView: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 34) {
-                    HeroBanner(wallpapers: featured, index: $heroIndex, eyebrow: nil)
+                    HeroBanner(items: featured, index: $heroIndex, eyebrow: nil)
 
                     VStack(alignment: .leading, spacing: 34) {
+                        CatalogueRow(title: "Free to download", entries: Array(model.notDownloaded.filter { $0.kind == .video }.prefix(12)))
                         WallpaperRow(title: "Recently added", wallpapers: Array(LibrarySort.newest.sorted(model.library.videos).prefix(12)))
                         WallpaperRow(title: "Recently played", wallpapers: Array(model.engine.recents.prefix(12)))
                         WallpaperRow(title: "Favorites", wallpapers: Array(model.library.favorites.prefix(12)))
@@ -32,6 +35,7 @@ struct HomeView: View {
                 }
                 .padding(.bottom, Theme.playerBarClearance)
             }
+            .task { await model.catalogue.refresh() }
         }
     }
 }
@@ -59,18 +63,18 @@ struct EmptyLibraryView: View {
 /// Full-width featured banner with a pager, used on Home and Explore.
 struct HeroBanner: View {
     @Environment(AppModel.self) private var model
-    let wallpapers: [Wallpaper]
+    let items: [BrowseItem]
     @Binding var index: Int
     let eyebrow: String?
 
-    private var safeIndex: Int { min(max(index, 0), wallpapers.count - 1) }
+    private var safeIndex: Int { min(max(index, 0), items.count - 1) }
 
     var body: some View {
-        let wallpaper = wallpapers[safeIndex]
+        let item = items[safeIndex]
 
         ZStack(alignment: .bottomLeading) {
-            ThumbnailImage(url: wallpaper.thumbnailURL)
-                .id(wallpaper.id)
+            ThumbnailImage(url: model.thumbnailURL(for: item))
+                .id(item.id)
                 .transition(.opacity)
                 .frame(maxWidth: .infinity)
                 .frame(height: 520)
@@ -89,39 +93,50 @@ struct HeroBanner: View {
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text((eyebrow ?? wallpaper.category).uppercased())
+                    Text((eyebrow ?? item.category).uppercased())
                         .font(.caption.weight(.semibold))
                         .tracking(1.2)
                         .foregroundStyle(.secondary)
-                    Text(wallpaper.title)
+                    Text(item.title)
                         .font(.system(size: 40, weight: .bold))
                         .lineLimit(2)
                     HStack(spacing: 8) {
-                        Text(wallpaper.detailLabel)
-                        if wallpaper.is4K { QualityBadge(text: "4K") }
+                        Text(item.detailLabel)
+                        if item.is4K { QualityBadge(text: "4K") }
                     }
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
                     HStack(spacing: 10) {
                         Button {
-                            model.open(wallpaper)
+                            model.open(item)
                         } label: {
                             Label("View Wallpaper", systemImage: "play.fill")
                         }
                         .buttonStyle(PillButtonStyle(prominent: true, large: true))
 
-                        Button {
-                            model.library.toggleFavorite(wallpaper)
-                        } label: {
-                            Label(wallpaper.isFavorite ? "Favorited" : "Favorite", systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
+                        switch item {
+                        case .local(let wallpaper):
+                            Button {
+                                model.library.toggleFavorite(wallpaper)
+                            } label: {
+                                Label(wallpaper.isFavorite ? "Favorited" : "Favorite", systemImage: wallpaper.isFavorite ? "heart.fill" : "heart")
+                            }
+                            .buttonStyle(PillButtonStyle(large: true))
+                        case .remote(let entry):
+                            Button {
+                                model.get(entry, andSet: true)
+                            } label: {
+                                Label(model.isGetting(entry) ? "Downloading…" : "Download & Set", systemImage: "arrow.down.circle")
+                            }
+                            .buttonStyle(PillButtonStyle(large: true))
+                            .disabled(model.isGetting(entry))
                         }
-                        .buttonStyle(PillButtonStyle(large: true))
                     }
                     .padding(.top, 6)
                 }
                 Spacer()
-                if wallpapers.count > 1 { pager }
+                if items.count > 1 { pager }
             }
             .padding(.horizontal, Theme.contentInset)
             .padding(.bottom, 28)
@@ -134,7 +149,7 @@ struct HeroBanner: View {
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
                 .accessibilityLabel("Previous")
             HStack(spacing: 5) {
-                ForEach(wallpapers.indices, id: \.self) { i in
+                ForEach(items.indices, id: \.self) { i in
                     Capsule()
                         .fill(.white.opacity(i == safeIndex ? 1 : 0.35))
                         .frame(width: i == safeIndex ? 22 : 6, height: 4)
@@ -151,7 +166,7 @@ struct HeroBanner: View {
     }
 
     private func step(_ delta: Int) {
-        let count = wallpapers.count
+        let count = items.count
         index = ((safeIndex + delta) % count + count) % count
     }
 }
@@ -202,22 +217,29 @@ struct ExploreView: View {
     @State private var onlyUltrawide = false
     @State private var sort: LibrarySort = .newest
 
-    private var results: [Wallpaper] {
-        var items = model.library.videos
+    /// Everything there is to browse: the library's videos, then the
+    /// catalogue's videos that aren't downloaded yet.
+    private var everything: [BrowseItem] {
+        model.library.videos.map(BrowseItem.local)
+            + model.notDownloaded.filter { $0.kind == .video }.map(BrowseItem.remote)
+    }
+
+    private var results: [BrowseItem] {
+        var items = everything
         if let category { items = items.filter { $0.category == category } }
         if only4K { items = items.filter(\.is4K) }
         if onlyUltrawide { items = items.filter(\.isUltrawide) }
-        return sort.sorted(items)
+        return BrowseItem.sorted(items, by: sort)
     }
 
     var body: some View {
-        let newest = Array(LibrarySort.newest.sorted(model.library.videos).prefix(6))
+        let newest = Array(BrowseItem.sorted(everything, by: .newest).prefix(6))
         if newest.isEmpty {
             EmptyLibraryView()
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
-                    HeroBanner(wallpapers: newest, index: $heroIndex, eyebrow: "Newest in your library")
+                    HeroBanner(items: newest, index: $heroIndex, eyebrow: nil)
 
                     VStack(alignment: .leading, spacing: 18) {
                         HStack {
@@ -258,13 +280,14 @@ struct ExploreView: View {
                             )
                             .frame(maxWidth: .infinity, minHeight: 220)
                         } else {
-                            WallpaperGrid(wallpapers: results)
+                            BrowseGrid(items: results)
                         }
                     }
                     .padding(.horizontal, Theme.contentInset)
                 }
                 .padding(.bottom, Theme.playerBarClearance)
             }
+            .task { await model.catalogue.refresh() }
         }
     }
 }

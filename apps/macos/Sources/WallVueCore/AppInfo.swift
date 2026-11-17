@@ -6,6 +6,8 @@ public enum AppInfo {
     public static let bundleID = "io.github.wallvue"
     /// The project's home. Help links are hidden if this is nil.
     public static let repositoryURL: URL? = URL(string: "https://github.com/suyashjain004/WallVue")
+    /// The live list of downloadable wallpapers.
+    public static let catalogueURL: URL? = URL(string: "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/index.json")
 }
 
 /// Where the app keeps its data: `~/Library/Application Support/WallVue/`.
@@ -25,6 +27,9 @@ public enum AppPaths {
     public static var libraryFile: URL { support.appendingPathComponent("library.json") }
     public static var stateFile: URL { support.appendingPathComponent("state.json") }
     public static var scheduleFile: URL { support.appendingPathComponent("schedule.json") }
+    /// The catalogue list as last fetched, and thumbnails fetched for it.
+    public static var catalogueFile: URL { support.appendingPathComponent("catalogue.json") }
+    public static var catalogueThumbnails: URL { support.appendingPathComponent("CatalogueThumbnails", isDirectory: true) }
 
     public static func ensureDirectories() {
         for dir in [support, media, thumbnails, stills] {

@@ -29,6 +29,12 @@ public final class LibraryStore {
     public var videos: [Wallpaper] { wallpapers.filter { $0.kind == .video } }
     public var stills: [Wallpaper] { wallpapers.filter { $0.kind == .still } }
     public var favorites: [Wallpaper] { wallpapers.filter(\.isFavorite) }
+    /// Wallpapers that came from the catalogue.
+    public var downloaded: [Wallpaper] { wallpapers.filter { $0.origin == .catalogue } }
+
+    public func wallpaper(catalogueID: String) -> Wallpaper? {
+        wallpapers.first { $0.catalogueID == catalogueID }
+    }
 
     public func wallpaper(id: UUID?) -> Wallpaper? {
         guard let id else { return nil }
@@ -117,6 +123,60 @@ public final class LibraryStore {
         }
         let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
         wallpaper.fileSize = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+        return wallpaper
+    }
+
+    // MARK: Catalogue downloads
+
+    /// Moves a file downloaded from the catalogue into the library, keeping
+    /// the entry's title, category, licence and credit.
+    public func addDownloaded(_ entry: CatalogueEntry, file: URL, thumbnail: URL?) async throws -> Wallpaper {
+        var ext = file.pathExtension.lowercased()
+        let known = entry.kind == .video ? Self.videoExtensions : Self.imageExtensions
+        if !known.contains(ext) { ext = entry.kind == .video ? "mp4" : "jpg" }
+        let id = UUID()
+        let fileName = "\(id.uuidString).\(ext)"
+        let destination = AppPaths.media.appendingPathComponent(fileName)
+        try FileManager.default.moveItem(at: file, to: destination)
+
+        var wallpaper: Wallpaper
+        do {
+            if entry.kind == .video {
+                let info = try await MediaTools.inspect(destination)
+                wallpaper = Wallpaper(
+                    id: id, title: entry.title, fileName: fileName, kind: .video, origin: .catalogue,
+                    category: entry.category, width: info.width, height: info.height, duration: info.duration,
+                    frameRate: info.frameRate, hasAudio: info.hasAudio
+                )
+            } else {
+                let size = try MediaTools.imageSize(of: destination)
+                wallpaper = Wallpaper(
+                    id: id, title: entry.title, fileName: fileName, kind: .still, origin: .catalogue,
+                    category: entry.category, width: size.width, height: size.height
+                )
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
+        }
+        wallpaper.catalogueID = entry.id
+        wallpaper.license = entry.license
+        wallpaper.credit = entry.credit
+        wallpaper.sourceURL = entry.source
+
+        // Prefer the catalogue's own thumbnail; fall back to a frame.
+        if let thumbnail, (try? FileManager.default.copyItem(at: thumbnail, to: wallpaper.thumbnailURL)) != nil {
+            // copied
+        } else if entry.kind == .video,
+                  let image = try? await MediaTools.frame(of: destination, at: min(1.0, wallpaper.duration / 2), maxDimension: 960) {
+            try? MediaTools.writeJPEG(image, to: wallpaper.thumbnailURL, quality: 0.82)
+        } else if let image = MediaTools.imageThumbnail(of: destination, maxDimension: 960) {
+            try? MediaTools.writeJPEG(image, to: wallpaper.thumbnailURL, quality: 0.82)
+        }
+        let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+        wallpaper.fileSize = (attributes?[.size] as? NSNumber)?.int64Value ?? entry.size
+        wallpapers.insert(wallpaper, at: 0)
+        save()
         return wallpaper
     }
 

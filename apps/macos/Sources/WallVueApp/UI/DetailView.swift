@@ -216,6 +216,12 @@ struct DetailView: View {
                  : "Applies to the desktop and Lock Screen of every display.")
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.7))
+
+            if let credit = wallpaper.credit {
+                Text("From the WallVue catalogue · By \(credit)\(wallpaper.license.map { " · Licence \($0)" } ?? "")")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         }
     }
 

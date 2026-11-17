@@ -23,6 +23,11 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
 if [ -f Resources/AppIcon.icns ]; then cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"; fi
+# A copy of the catalogue list and its thumbnails (no videos), so there is
+# something to browse on first launch and without a connection.
+mkdir -p "$APP/Contents/Resources/catalogue"
+cp ../../catalogue/index.json "$APP/Contents/Resources/catalogue/index.json"
+cp -R ../../catalogue/thumbnails "$APP/Contents/Resources/catalogue/thumbnails"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -55,7 +60,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
             </array>
         </dict>
     </array>
-    <key>NSHumanReadableCopyright</key><string>MIT licensed. Free and open source.</string>
+    <key>NSHumanReadableCopyright</key><string>Free and open source under the GNU GPL, version 3.</string>
 </dict>
 </plist>
 PLIST

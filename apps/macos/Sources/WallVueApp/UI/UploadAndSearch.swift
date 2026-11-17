@@ -192,6 +192,15 @@ struct SearchPalette: View {
         }.prefix(8))
     }
 
+    /// Catalogue wallpapers that match and aren't downloaded yet.
+    private var catalogueResults: [CatalogueEntry] {
+        let text = query.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return [] }
+        return Array(model.notDownloaded.filter {
+            $0.title.localizedCaseInsensitiveContains(text) || $0.category.localizedCaseInsensitiveContains(text)
+        }.prefix(max(0, 8 - results.count)))
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             Rectangle()
@@ -206,7 +215,13 @@ struct SearchPalette: View {
                         .textFieldStyle(.plain)
                         .font(.title2)
                         .focused($isFocused)
-                        .onSubmit { if let first = results.first { model.open(first) } }
+                        .onSubmit {
+                            if let first = results.first {
+                                model.open(first)
+                            } else if let first = catalogueResults.first {
+                                model.open(first)
+                            }
+                        }
                 }
                 .padding(.horizontal, 20)
                 .frame(height: 58)
@@ -217,7 +232,7 @@ struct SearchPalette: View {
                         quickLink("Live Wallpapers", symbol: "play.rectangle.on.rectangle", shortcut: "⌘2", tab: .explore)
                         quickLink("Stills", symbol: "photo.on.rectangle", shortcut: "⌘3", tab: .stills)
                         quickLink("Library", symbol: "square.stack", shortcut: "⌘4", tab: .library)
-                    } else if results.isEmpty {
+                    } else if results.isEmpty && catalogueResults.isEmpty {
                         Text("No wallpapers match “\(query)”")
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,6 +249,24 @@ struct SearchPalette: View {
                                     Text(wallpaper.title).font(.body.weight(.semibold))
                                     Spacer()
                                     Text(wallpaper.category).foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 9)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        ForEach(catalogueResults) { entry in
+                            Button {
+                                model.open(entry)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    ThumbnailImage(url: model.catalogue.thumbnailFile(for: entry))
+                                        .frame(width: 64, height: 36)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    Text(entry.title).font(.body.weight(.semibold))
+                                    Spacer()
+                                    Label(entry.category, systemImage: "arrow.down.circle").foregroundStyle(.secondary)
                                 }
                                 .padding(.horizontal, 18)
                                 .padding(.vertical, 9)

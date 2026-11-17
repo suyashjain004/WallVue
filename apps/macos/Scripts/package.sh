@@ -24,7 +24,7 @@ WallVue $VERSION
    Open System Settings > Privacy & Security, scroll down, and click
    "Open Anyway" next to WallVue. You only do this once.
 
-WallVue is open source under the MIT licence:
+WallVue is free and open source under the GNU General Public License, version 3:
 https://github.com/suyashjain004/WallVue
 TXT
 
