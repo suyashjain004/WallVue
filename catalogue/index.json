@@ -239,6 +239,23 @@
       "files": [
         "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/amazing-spider-man-dusk-action.mp4"
       ]
+    },
+    {
+      "id": "endgame-ironman-snap",
+      "title": "Endgame Ironman Snap",
+      "kind": "video",
+      "category": "Superhero",
+      "width": 2990,
+      "height": 1512,
+      "duration": 29.82,
+      "frameRate": 120.0,
+      "size": 105246793,
+      "license": "CC0-1.0",
+      "credit": "Community Upload",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/endgame-ironman-snap.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/endgame-ironman-snap.mov"
+      ]
     }
   ]
 }
