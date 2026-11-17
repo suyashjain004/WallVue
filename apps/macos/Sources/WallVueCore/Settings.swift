@@ -9,6 +9,9 @@ public enum SettingsKey {
     public static let restoreOnLaunch = "restoreOnLaunch"
     public static let hasCompletedOnboarding = "hasCompletedOnboarding"
     public static let globalShortcuts = "globalShortcuts"
+    public static let keepPlayingAfterQuit = "keepPlayingAfterQuit"
+    public static let checkForUpdates = "checkForUpdates"
+    public static let lastUpdateCheck = "lastUpdateCheck"
     // Wallpaper
     public static let playbackMode = "playbackMode"
     public static let scaling = "scaling"
@@ -32,6 +35,9 @@ public enum SettingsKey {
     public static let pauseInLowPowerMode = "pauseInLowPowerMode"
     public static let pauseWhenCovered = "pauseWhenCovered"
     public static let pauseWhenHot = "pauseWhenHot"
+    public static let pauseForCamera = "pauseForCamera"
+    public static let pauseForMicrophone = "pauseForMicrophone"
+    public static let pauseWhenScreenShared = "pauseWhenScreenShared"
     // Storage
     public static let downloadLimitGB = "downloadLimitGB"
 }
@@ -75,6 +81,8 @@ public enum SettingsDefaults {
         SettingsKey.restoreOnLaunch: true,
         SettingsKey.hasCompletedOnboarding: false,
         SettingsKey.globalShortcuts: true,
+        SettingsKey.keepPlayingAfterQuit: true,
+        SettingsKey.checkForUpdates: true,
         SettingsKey.playbackMode: PlaybackMode.app.rawValue,
         SettingsKey.scaling: ScalingMode.fill.rawValue,
         SettingsKey.playbackRate: 1.0,
@@ -94,6 +102,9 @@ public enum SettingsDefaults {
         SettingsKey.pauseInLowPowerMode: true,
         SettingsKey.pauseWhenCovered: true,
         SettingsKey.pauseWhenHot: true,
+        SettingsKey.pauseForCamera: true,
+        SettingsKey.pauseForMicrophone: false,
+        SettingsKey.pauseWhenScreenShared: false,
         SettingsKey.downloadLimitGB: 10,
     ]
 
@@ -126,6 +137,9 @@ public struct SettingsSnapshot: Equatable, Sendable {
         rules.pauseOnBattery = defaults.bool(forKey: SettingsKey.pauseOnBattery)
         rules.pauseInLowPowerMode = defaults.bool(forKey: SettingsKey.pauseInLowPowerMode)
         rules.pauseWhenHot = defaults.bool(forKey: SettingsKey.pauseWhenHot)
+        rules.pauseForCamera = defaults.bool(forKey: SettingsKey.pauseForCamera)
+        rules.pauseForMicrophone = defaults.bool(forKey: SettingsKey.pauseForMicrophone)
+        rules.pauseWhenScreenShared = defaults.bool(forKey: SettingsKey.pauseWhenScreenShared)
 
         func clamp(_ value: Double, _ low: Double, _ high: Double) -> Double { min(max(value, low), high) }
         let rate = defaults.double(forKey: SettingsKey.playbackRate)

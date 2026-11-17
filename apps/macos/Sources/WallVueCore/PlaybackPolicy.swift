@@ -12,6 +12,12 @@ public struct PlaybackEnvironment: Equatable, Sendable {
     public var lowPowerMode = false
     /// Thermal state is `serious` or `critical`.
     public var thermallyConstrained = false
+    /// Some app is using a camera.
+    public var cameraInUse = false
+    /// Some app is recording from a microphone.
+    public var microphoneInUse = false
+    /// Some app is capturing the screen (sharing or recording it).
+    public var screenShared = false
 
     public init() {}
 }
@@ -22,12 +28,15 @@ public struct PlaybackRules: Equatable, Sendable {
     public var pauseOnBattery = false
     public var pauseInLowPowerMode = true
     public var pauseWhenHot = true
+    public var pauseForCamera = true
+    public var pauseForMicrophone = false
+    public var pauseWhenScreenShared = false
 
     public init() {}
 }
 
 public enum PauseReason: String, Equatable, Sendable {
-    case user, displayAsleep, locked, covered, battery, lowPowerMode, thermal
+    case user, displayAsleep, locked, covered, battery, lowPowerMode, thermal, call, screenShared
 
     public var label: String {
         switch self {
@@ -38,6 +47,8 @@ public enum PauseReason: String, Equatable, Sendable {
         case .battery: return "Paused — on battery"
         case .lowPowerMode: return "Paused — Low Power Mode"
         case .thermal: return "Paused — Mac is running hot"
+        case .call: return "Paused — you're on a call"
+        case .screenShared: return "Paused — your screen is being shared"
         }
     }
 }
@@ -59,6 +70,10 @@ public enum PlaybackPolicy {
         if env.sessionLocked { return .pause(.locked) }
         // Explicit user intent beats every automatic rule.
         if env.userPaused { return .pause(.user) }
+        // Calls next: the Mac is busy with something that matters more.
+        if rules.pauseForCamera && env.cameraInUse { return .pause(.call) }
+        if rules.pauseForMicrophone && env.microphoneInUse { return .pause(.call) }
+        if rules.pauseWhenScreenShared && env.screenShared { return .pause(.screenShared) }
         // Power and heat before occlusion, so the UI reports the cause the
         // user can actually act on.
         if rules.pauseWhenHot && env.thermallyConstrained { return .pause(.thermal) }

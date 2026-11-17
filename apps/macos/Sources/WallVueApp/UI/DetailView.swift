@@ -184,6 +184,17 @@ struct DetailView: View {
                 .help("Show in Finder")
                 .accessibilityLabel("Show in Finder")
 
+                if wallpaper.kind == .video, LoopPlan.canLoop(duration: wallpaper.duration) {
+                    Button {
+                        model.loopSource = wallpaper
+                    } label: {
+                        Image(systemName: "repeat")
+                    }
+                    .buttonStyle(CircleButtonStyle(diameter: 40))
+                    .help("Make a seamless loop")
+                    .accessibilityLabel("Make a seamless loop")
+                }
+
                 ShareLink(item: wallpaper.fileURL) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }

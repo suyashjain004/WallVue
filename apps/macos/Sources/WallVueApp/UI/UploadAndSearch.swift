@@ -89,7 +89,7 @@ struct UploadView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             step(1, "Choose files", "Drop them on the left or click Choose Files.")
-            step(2, "Check the details", "WallVue suggests a title. Change it and pick a category below.")
+            step(2, "Check the details", "WallVue suggests a title. Change it, pick a category, or make a seamless loop below.")
             step(3, "Set it", "Use Set Wallpaper here, or find it in Library.")
         }
         .padding(22)
@@ -153,6 +153,16 @@ private struct ImportedRow: View {
             .frame(width: 130)
 
             Spacer()
+
+            if wallpaper.kind == .video, LoopPlan.canLoop(duration: wallpaper.duration) {
+                Button {
+                    model.loopSource = wallpaper
+                } label: {
+                    Label("Make Loop…", systemImage: "repeat")
+                }
+                .buttonStyle(PillButtonStyle())
+                .help("Make a copy that repeats without a visible jump")
+            }
 
             Button(model.engine.isShowing(wallpaper) ? "On Your Mac" : "Set Wallpaper") {
                 model.library.rename(wallpaper, to: title)

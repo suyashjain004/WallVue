@@ -120,6 +120,48 @@ public final class LibraryStore {
         return wallpaper
     }
 
+    // MARK: Loops
+
+    /// Adds a seamlessly looping copy of a video wallpaper to the library.
+    /// The original is left as it is. Problems are reported through
+    /// `lastError`.
+    @discardableResult
+    public func addLoop(of wallpaper: Wallpaper, plan: LoopPlan) async -> Wallpaper? {
+        guard wallpaper.kind == .video else { return nil }
+        let id = UUID()
+        let fileName = "\(id.uuidString).mov"
+        let destination = AppPaths.media.appendingPathComponent(fileName)
+        let partial = AppPaths.media.appendingPathComponent("\(id.uuidString).partial.mov")
+
+        importsInProgress += 1
+        defer { importsInProgress -= 1 }
+        do {
+            try await LoopMaker.makeLoop(from: wallpaper.fileURL, to: partial, plan: plan)
+            try FileManager.default.moveItem(at: partial, to: destination)
+            let info = try await MediaTools.inspect(destination)
+            var loop = Wallpaper(
+                id: id, title: "\(wallpaper.title) Loop", fileName: fileName, kind: .video,
+                category: wallpaper.category,
+                width: info.width, height: info.height, duration: info.duration,
+                frameRate: info.frameRate, hasAudio: info.hasAudio
+            )
+            let previewTime = min(1.0, info.duration / 2)
+            if let image = try? await MediaTools.frame(of: destination, at: previewTime, maxDimension: 960) {
+                try? MediaTools.writeJPEG(image, to: loop.thumbnailURL, quality: 0.82)
+            }
+            let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+            loop.fileSize = (attributes?[.size] as? NSNumber)?.int64Value ?? 0
+            wallpapers.insert(loop, at: 0)
+            save()
+            return loop
+        } catch {
+            try? FileManager.default.removeItem(at: partial)
+            try? FileManager.default.removeItem(at: destination)
+            lastError = "Couldn't make a loop from “\(wallpaper.title)”. \(error.localizedDescription)"
+            return nil
+        }
+    }
+
     static func prettyTitle(from url: URL) -> String {
         let raw = url.deletingPathExtension().lastPathComponent
             .replacingOccurrences(of: "_", with: " ")

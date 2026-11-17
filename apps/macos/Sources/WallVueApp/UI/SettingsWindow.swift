@@ -152,6 +152,8 @@ private struct GeneralPane: View {
     @AppStorage(SettingsKey.showMenuBarIcon) private var showMenuBarIcon = true
     @Environment(AppModel.self) private var model
     @AppStorage(SettingsKey.restoreOnLaunch) private var restoreOnLaunch = true
+    @AppStorage(SettingsKey.keepPlayingAfterQuit) private var keepPlayingAfterQuit = true
+    @AppStorage(SettingsKey.checkForUpdates) private var checkForUpdates = true
     @State private var openAtLogin = false
     @State private var loginError: String?
     @State private var confirmsReset = false
@@ -168,6 +170,26 @@ private struct GeneralPane: View {
         .onAppear { openAtLogin = LoginItem.isEnabled }
 
         Section {
+            Toggle(isOn: $keepPlayingAfterQuit) {
+                Text("Keep the wallpaper playing after you quit")
+                Text("Quit hides WallVue and its Dock icon and leaves the wallpaper running.")
+            }
+        } header: {
+            Text("Quitting")
+        } footer: {
+            Text("To stop the wallpaper as well, choose Quit Completely (⌥⌘Q) from the WallVue menu, or Quit in the menu bar panel. Opening WallVue again brings its window back.")
+        }
+
+        Section {
+            Toggle(isOn: $checkForUpdates) {
+                Text("Check for updates automatically")
+                Text("Once a day, WallVue asks GitHub whether a newer version exists. Nothing about you is sent.")
+            }
+        } header: {
+            Text("Updates")
+        }
+
+        Section {
             Toggle(isOn: $showMenuBarIcon) {
                 Text("Show WallVue in the menu bar")
                 Text("Click it for what's playing and quick controls.")
@@ -175,7 +197,7 @@ private struct GeneralPane: View {
         } header: {
             Text("Menu Bar")
         } footer: {
-            Text("With the icon hidden, WallVue keeps playing; open it from the Dock or Applications.")
+            Text("With the icon hidden, WallVue keeps playing; open it from the Dock, Spotlight or Applications.")
         }
 
         Section {
@@ -241,13 +263,13 @@ private struct WallpaperPane: View {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.tint)
             } label: {
                 Text("WallVue App")
-                Text("WallVue plays the desktop while it's open. The Lock Screen and screen saver can play it too; see Lock Screen.")
+                Text("WallVue plays the desktop, and keeps playing after you quit if that is on in General. The Lock Screen and screen saver can play it too; see Lock Screen.")
             }
             LabeledContent {
                 Text("Not available yet").foregroundStyle(.secondary)
             } label: {
                 Text("System Wallpaper")
-                Text("macOS would also keep the desktop moving while WallVue is closed. Until then, turn on Live Lock Screen in the Lock Screen section.")
+                Text("macOS itself would play the desktop, with no part of WallVue left running.")
             }
         } header: {
             Text("Playback")
@@ -414,8 +436,32 @@ private struct BatteryPane: View {
     @AppStorage(SettingsKey.pauseInLowPowerMode) private var pauseInLowPowerMode = true
     @AppStorage(SettingsKey.pauseWhenCovered) private var pauseWhenCovered = true
     @AppStorage(SettingsKey.pauseWhenHot) private var pauseWhenHot = true
+    @AppStorage(SettingsKey.pauseForCamera) private var pauseForCamera = true
+    @AppStorage(SettingsKey.pauseForMicrophone) private var pauseForMicrophone = false
+    @AppStorage(SettingsKey.pauseWhenScreenShared) private var pauseWhenScreenShared = false
 
     var body: some View {
+        Section {
+            Toggle(isOn: $pauseForCamera) {
+                Text("Pause during video calls")
+                Text("While any app is using your camera.")
+            }
+            Toggle(isOn: $pauseForMicrophone) {
+                Text("Pause when the microphone is in use")
+                Text("Covers voice calls. Dictation and recording apps count too.")
+            }
+            if CallMonitor.canDetectScreenCapture {
+                Toggle(isOn: $pauseWhenScreenShared) {
+                    Text("Pause while your screen is shared or recorded")
+                    Text("Keeps a shared screen calm. Leave it off to record the wallpaper itself.")
+                }
+            }
+        } header: {
+            Text("Calls and Screen Sharing")
+        } footer: {
+            Text("WallVue only reads whether the camera, microphone or screen is in use. It never sees or hears anything, and asks for no permission.")
+        }
+
         Section("Battery") {
             Toggle(isOn: $pauseOnBattery) {
                 Text("Pause on battery")
@@ -625,7 +671,7 @@ private struct HelpPane: View {
         }
 
         Section("Privacy") {
-            Text("WallVue has no account, no analytics and no tracking. Your wallpapers and settings stay on this Mac.")
+            Text("WallVue has no account, no analytics and no tracking. Your wallpapers and settings stay on this Mac. The only thing it fetches is the daily update check from GitHub, which you can turn off in General.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -633,6 +679,8 @@ private struct HelpPane: View {
 }
 
 private struct AboutPane: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         Section {
             VStack(spacing: 8) {
@@ -645,6 +693,33 @@ private struct AboutPane: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
+        }
+
+        Section("Updates") {
+            LabeledContent {
+                switch model.updateState {
+                case .available(let update):
+                    Button("Get Version \(update.version.description)") { NSWorkspace.shared.open(update.page) }
+                case .checking:
+                    ProgressView().controlSize(.small)
+                default:
+                    Button("Check Now") { model.checkForUpdates(userInitiated: true) }
+                        .disabled(AppModel.currentVersion == nil)
+                }
+            } label: {
+                switch model.updateState {
+                case .available(let update):
+                    Text("WallVue \(update.version.description) is available")
+                    Text("Download it, then replace this copy in Applications.")
+                case .upToDate:
+                    Text("WallVue is up to date")
+                case .failed:
+                    Text("Couldn't check right now")
+                    Text("GitHub didn't answer, or no version has been released yet.")
+                case .idle, .checking:
+                    Text("Check for a newer version")
+                }
+            }
         }
 
         Section("Licence") {

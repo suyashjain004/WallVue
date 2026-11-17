@@ -27,6 +27,7 @@ final class WallpaperEngine {
 
     private let library: LibraryStore
     private let power = PowerMonitor()
+    private let calls = CallMonitor()
     @ObservationIgnored private var windows: [String: DesktopWindowController] = [:]
     @ObservationIgnored private var settings = SettingsSnapshot.load()
     @ObservationIgnored private var displayAsleep = false
@@ -103,6 +104,7 @@ final class WallpaperEngine {
         installObservers()
         power.onChange = { [weak self] in self?.applyPlayback() }
         power.start()
+        calls.onChange = { [weak self] in self?.applyPlayback() }
         reconcile()
         restartAutomation()
         updateLockScreen()
@@ -276,7 +278,19 @@ final class WallpaperEngine {
         for key in windows.keys where !live.contains(key) {
             windows.removeValue(forKey: key)?.close()
         }
+        updateCallWatching()
         applyPlayback()
+    }
+
+    /// Checks for calls only while a video is on the desktop and the user
+    /// wants it paused for them.
+    private func updateCallWatching() {
+        let playing = !windows.isEmpty
+        calls.watch(
+            camera: playing && settings.rules.pauseForCamera,
+            microphone: playing && settings.rules.pauseForMicrophone,
+            screen: playing && settings.rules.pauseWhenScreenShared
+        )
     }
 
     private func applyPlayback() {
@@ -294,6 +308,9 @@ final class WallpaperEngine {
             env.onBattery = power.onBattery
             env.lowPowerMode = power.lowPowerMode
             env.thermallyConstrained = power.thermallyConstrained
+            env.cameraInUse = calls.signals.camera
+            env.microphoneInUse = calls.signals.microphone
+            env.screenShared = calls.signals.screen
 
             let decision = PlaybackPolicy.decide(env, rules: settings.rules)
             let hasAudio = wallpaper(onDisplay: key)?.hasAudio ?? false
@@ -423,6 +440,7 @@ final class WallpaperEngine {
         guard fresh != settings else { return }
         let old = settings
         settings = fresh
+        updateCallWatching()
         applyPlayback()
         if fresh.liveLockScreen != old.liveLockScreen {
             if fresh.liveLockScreen {

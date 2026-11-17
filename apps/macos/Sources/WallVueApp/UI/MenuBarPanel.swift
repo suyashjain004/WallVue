@@ -85,8 +85,11 @@ struct MenuBarPanel: View {
                 Button("Stop Wallpaper") { engine.stop() }
                     .disabled(!engine.isActive)
                 Divider()
+                if let update = model.availableUpdate {
+                    Button("Get \(AppInfo.name) \(update.version.description)…") { NSWorkspace.shared.open(update.page) }
+                }
                 Text("\(AppInfo.name) \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
-                Button("Quit \(AppInfo.name)") { NSApp.terminate(nil) }
+                Button(engine.isActive ? "Quit and Stop the Wallpaper" : "Quit \(AppInfo.name)") { model.quitCompletely() }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 13, weight: .semibold))
@@ -205,12 +208,14 @@ struct MenuBarPanel: View {
     }
 
     private func showMainWindow() {
+        model.leaveBackground()
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
     }
 
     private func showSettings(_ pane: SettingsPane) {
         model.settingsPane = pane
+        model.leaveBackground(showMainWindow: false)
         openWindow(id: "settings")
         NSApp.activate(ignoringOtherApps: true)
     }

@@ -290,6 +290,9 @@ struct WallpaperCard: View {
             draftTitle = wallpaper.title
             isRenaming = true
         }
+        if wallpaper.kind == .video, LoopPlan.canLoop(duration: wallpaper.duration) {
+            Button("Make Seamless Loop…") { model.loopSource = wallpaper }
+        }
         Button("Show in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([wallpaper.fileURL])
         }

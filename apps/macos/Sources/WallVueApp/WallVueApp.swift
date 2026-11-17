@@ -47,6 +47,21 @@ final class AppModel {
     var settingsPane: SettingsPane = .general
     /// Newest first; drives the "check the details" list on the upload page.
     var recentlyImported: [UUID] = []
+    /// The video the loop maker sheet is open for, if any.
+    var loopSource: Wallpaper?
+
+    /// True while WallVue is hidden but still playing the wallpaper, which
+    /// is what Quit does when "keep playing" is on.
+    private(set) var isInBackground = false
+    /// Set by Quit Completely, so the next quit really ends the app.
+    @ObservationIgnored var isQuittingCompletely = false
+    @ObservationIgnored private var parkedWindows: [NSWindow] = []
+
+    enum UpdateState: Equatable {
+        case idle, checking, upToDate, failed
+        case available(AvailableUpdate)
+    }
+    private(set) var updateState: UpdateState = .idle
 
     private init() {
         SettingsDefaults.register()
@@ -84,6 +99,85 @@ final class AppModel {
         ])
     }
 
+    // MARK: Playing in the background
+
+    /// Hides every window and the Dock icon and leaves the wallpaper
+    /// running. The menu bar item, or opening WallVue again, brings it back.
+    func enterBackground() {
+        detailID = nil
+        isSearchShown = false
+        loopSource = nil
+        parkedWindows = NSApp.windows.filter { $0.isVisible && $0.level == .normal && $0.canBecomeMain }
+        for window in parkedWindows { window.orderOut(nil) }
+        NSApp.setActivationPolicy(.accessory)
+        isInBackground = true
+    }
+
+    /// Brings the Dock icon back, and the main window too unless the caller
+    /// is about to show a window of its own.
+    func leaveBackground(showMainWindow: Bool = true) {
+        guard isInBackground else { return }
+        isInBackground = false
+        NSApp.setActivationPolicy(.regular)
+        let main = parkedWindows.first { $0.identifier?.rawValue.hasPrefix("main") == true } ?? parkedWindows.first
+        parkedWindows = []
+        if showMainWindow { main?.makeKeyAndOrderFront(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Ends the app even when "keep playing after you quit" is on.
+    func quitCompletely() {
+        isQuittingCompletely = true
+        NSApp.terminate(nil)
+    }
+
+    // MARK: Updates
+
+    static var currentVersion: AppVersion? {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String).flatMap(AppVersion.init)
+    }
+
+    /// Asks GitHub whether a newer version exists. The automatic check runs
+    /// at most once a day and stays quiet about failures.
+    func checkForUpdates(userInitiated: Bool) {
+        guard updateState != .checking,
+              let current = Self.currentVersion,
+              let repository = AppInfo.repositoryURL
+        else { return }
+        let defaults = UserDefaults.standard
+        if !userInitiated {
+            guard defaults.bool(forKey: SettingsKey.checkForUpdates) else { return }
+            let last = defaults.double(forKey: SettingsKey.lastUpdateCheck)
+            guard Date().timeIntervalSince1970 - last > 24 * 3600 else { return }
+        }
+        let previous = updateState
+        updateState = .checking
+        Task {
+            do {
+                let update = try await UpdateChecker.check(current: current, repository: repository)
+                defaults.set(Date().timeIntervalSince1970, forKey: SettingsKey.lastUpdateCheck)
+                updateState = update.map(UpdateState.available) ?? .upToDate
+            } catch {
+                updateState = userInitiated ? .failed : previous
+            }
+        }
+    }
+
+    var availableUpdate: AvailableUpdate? {
+        if case .available(let update) = updateState { return update }
+        return nil
+    }
+
+    // MARK: Loops
+
+    func makeLoop(of wallpaper: Wallpaper, plan: LoopPlan) {
+        Task {
+            if let loop = await library.addLoop(of: wallpaper, plan: plan) {
+                recentlyImported.insert(loop.id, at: 0)
+            }
+        }
+    }
+
     // MARK: Reset and uninstall
 
     /// Stops the wallpaper, puts the system wallpaper and screen saver back,
@@ -115,7 +209,7 @@ final class AppModel {
         try? LoginItem.set(false)
         try? FileManager.default.removeItem(at: AppPaths.support)
         NSWorkspace.shared.recycle([Bundle.main.bundleURL]) { _, _ in
-            Task { @MainActor in NSApp.terminate(nil) }
+            Task { @MainActor in AppModel.shared.quitCompletely() }
         }
     }
 
@@ -155,8 +249,71 @@ final class AppModel {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var launchedAtLogin = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // macOS marks the launch it does for a login item.
+        if let event = NSAppleEventManager.shared().currentAppleEvent,
+           event.eventID == AEEventID(kAEOpenApplication),
+           let reason = event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData)) {
+            launchedAtLogin = reason.enumCodeValue == OSType(keyAELaunchedAsLogInItem)
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        AppModel.shared.engine.start()
+        let model = AppModel.shared
+        model.engine.start()
+        model.checkForUpdates(userInitiated: false)
+
+        // Started by macOS at login: play the wallpaper without putting a
+        // window in the user's way.
+        if launchedAtLogin, model.engine.isActive,
+           UserDefaults.standard.bool(forKey: SettingsKey.keepPlayingAfterQuit) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { model.enterBackground() }
+        }
+    }
+
+    /// With "keep playing after you quit" on, Quit hides WallVue and leaves
+    /// the wallpaper running. Logging out, restarting, shutting down and
+    /// quits sent by scripts or installers always go through.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let model = AppModel.shared
+        guard !model.isQuittingCompletely,
+              UserDefaults.standard.bool(forKey: SettingsKey.keepPlayingAfterQuit),
+              model.engine.isActive,
+              Self.isOrdinaryQuit()
+        else { return .terminateNow }
+        model.enterBackground()
+        return .terminateCancel
+    }
+
+    /// True for ⌘Q, the app menu's Quit and the Dock's Quit.
+    private static func isOrdinaryQuit() -> Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              event.eventClass == AEEventClass(kCoreEventClass),
+              event.eventID == AEEventID(kAEQuitApplication)
+        else { return true }   // the menu item and ⌘Q don't arrive as Apple events
+        if event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason)) != nil { return false }
+        guard let pid = event.attributeDescriptor(forKeyword: AEKeyword(keySenderPIDAttr))?.int32Value,
+              let sender = NSRunningApplication(processIdentifier: pid)
+        else { return false }
+        return sender.bundleIdentifier == "com.apple.dock"
+    }
+
+    /// Opening WallVue again (Finder, Spotlight, Launchpad) while it plays
+    /// in the background brings its window back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        let model = AppModel.shared
+        if model.isInBackground {
+            model.leaveBackground()
+        }
+        let hasWindow = sender.windows.contains { $0.isVisible && $0.level == .normal && $0.canBecomeMain }
+        if !hasWindow,
+           let main = sender.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") == true }) {
+            main.makeKeyAndOrderFront(nil)
+            return false
+        }
+        return !hasWindow
     }
 
     /// Files dropped on the Dock icon, or opened with "Open With → WallVue".
@@ -218,6 +375,12 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { openWindow(id: "settings") }
                 .keyboardShortcut(",")
+        }
+        CommandGroup(replacing: .appTermination) {
+            Button("Quit \(AppInfo.name)") { NSApp.terminate(nil) }
+                .keyboardShortcut("q")
+            Button("Quit Completely") { model.quitCompletely() }
+                .keyboardShortcut("q", modifiers: [.option, .command])
         }
         CommandGroup(replacing: .newItem) {
             Button("Upload a Wallpaper…") { model.showUpload() }

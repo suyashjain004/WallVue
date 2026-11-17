@@ -60,7 +60,7 @@ struct RootView: View {
             return true
         }
         .alert(
-            "Some files couldn't be added",
+            "Something couldn't be added",
             isPresented: Binding(
                 get: { model.library.lastError != nil },
                 set: { if !$0 { model.library.lastError = nil } }
@@ -72,6 +72,11 @@ struct RootView: View {
         }
         .sheet(isPresented: Binding(get: { !hasCompletedOnboarding }, set: { if !$0 { hasCompletedOnboarding = true } })) {
             OnboardingView { hasCompletedOnboarding = true }
+        }
+        .sheet(item: $model.loopSource) { source in
+            LoopMakerSheet(wallpaper: source)
+                .environment(model)
+                .preferredColorScheme(.dark)
         }
     }
 
