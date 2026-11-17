@@ -222,6 +222,23 @@
       "files": [
         "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/tidal-glass.mp4"
       ]
+    },
+    {
+      "id": "amazing-spider-man-dusk-action",
+      "title": "Amazing Spider-Man Dusk Action",
+      "kind": "video",
+      "category": "Superhero",
+      "width": 1080,
+      "height": 1920,
+      "duration": 30.93,
+      "frameRate": 60.0,
+      "size": 36285241,
+      "license": "CC0-1.0",
+      "credit": "Community Upload",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/amazing-spider-man-dusk-action.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/amazing-spider-man-dusk-action.mp4"
+      ]
     }
   ]
 }
