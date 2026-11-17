@@ -1,5 +1,227 @@
 {
   "version": 1,
-  "updated": "2026-11-13",
-  "wallpapers": []
+  "updated": "2026-11-17",
+  "wallpapers": [
+    {
+      "id": "aurora-veil",
+      "title": "Aurora Veil",
+      "kind": "video",
+      "category": "Nature",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 4696679,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/aurora-veil.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/aurora-veil.mp4"
+      ]
+    },
+    {
+      "id": "city-rain",
+      "title": "City Rain",
+      "kind": "video",
+      "category": "City",
+      "width": 3840,
+      "height": 2160,
+      "duration": 12,
+      "frameRate": 30,
+      "size": 9706991,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/city-rain.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/city-rain.mp4"
+      ]
+    },
+    {
+      "id": "contour-map",
+      "title": "Contour Map",
+      "kind": "video",
+      "category": "Minimal",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 9894838,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/contour-map.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/contour-map.mp4"
+      ]
+    },
+    {
+      "id": "deep-field",
+      "title": "Deep Field",
+      "kind": "video",
+      "category": "Space",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 6258680,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/deep-field.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/deep-field.mp4"
+      ]
+    },
+    {
+      "id": "dune-lines",
+      "title": "Dune Lines",
+      "kind": "video",
+      "category": "Minimal",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 1443145,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/dune-lines.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/dune-lines.mp4"
+      ]
+    },
+    {
+      "id": "ember-drift",
+      "title": "Ember Drift",
+      "kind": "video",
+      "category": "Dark",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 4883885,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/ember-drift.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/ember-drift.mp4"
+      ]
+    },
+    {
+      "id": "mesh-dawn",
+      "title": "Mesh Dawn",
+      "kind": "video",
+      "category": "Minimal",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 2085314,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/mesh-dawn.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/mesh-dawn.mp4"
+      ]
+    },
+    {
+      "id": "mesh-graphite",
+      "title": "Mesh Graphite",
+      "kind": "video",
+      "category": "Dark",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 1221914,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/mesh-graphite.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/mesh-graphite.mp4"
+      ]
+    },
+    {
+      "id": "mesh-lagoon",
+      "title": "Mesh Lagoon",
+      "kind": "video",
+      "category": "Ocean",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 2068838,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/mesh-lagoon.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/mesh-lagoon.mp4"
+      ]
+    },
+    {
+      "id": "night-ridge",
+      "title": "Night Ridge",
+      "kind": "video",
+      "category": "Dark",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 1654186,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/night-ridge.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/night-ridge.mp4"
+      ]
+    },
+    {
+      "id": "plasma-bloom",
+      "title": "Plasma Bloom",
+      "kind": "video",
+      "category": "Abstract",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 3253254,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/plasma-bloom.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/plasma-bloom.mp4"
+      ]
+    },
+    {
+      "id": "snowfall",
+      "title": "Snowfall",
+      "kind": "video",
+      "category": "Nature",
+      "width": 3840,
+      "height": 2160,
+      "duration": 16,
+      "frameRate": 30,
+      "size": 22512885,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/snowfall.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/snowfall.mp4"
+      ]
+    },
+    {
+      "id": "tidal-glass",
+      "title": "Tidal Glass",
+      "kind": "video",
+      "category": "Ocean",
+      "width": 3840,
+      "height": 2160,
+      "duration": 12,
+      "frameRate": 30,
+      "size": 5429457,
+      "license": "CC-BY-NC-ND-4.0",
+      "credit": "WallVue",
+      "thumbnail": "https://raw.githubusercontent.com/suyashjain004/WallVue/main/catalogue/thumbnails/tidal-glass.jpg",
+      "files": [
+        "https://github.com/suyashjain004/WallVue/releases/download/wallpapers-1/tidal-glass.mp4"
+      ]
+    }
+  ]
 }
