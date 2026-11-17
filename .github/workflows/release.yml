@@ -1,0 +1,48 @@
+# Builds the macOS app and, for a version tag, publishes it as a release.
+#
+# It runs only when asked: from the Actions tab ("Run workflow"), or when a
+# tag like v0.1.0 is pushed. It does not run on ordinary pushes, so it uses
+# no build minutes day to day.
+name: Release (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/macos
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the build number is the commit count
+
+      - name: Tag matches the VERSION file
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "v$(tr -d '[:space:]' < VERSION)" = "$GITHUB_REF_NAME"
+
+      - name: Test
+        run: swift test
+
+      - name: Package
+        run: ./Scripts/package.sh
+
+      - name: Keep the disk image with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: WallVue-dmg
+          path: apps/macos/build/*.dmg
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/*.dmg --title "WallVue ${GITHUB_REF_NAME#v}" --generate-notes

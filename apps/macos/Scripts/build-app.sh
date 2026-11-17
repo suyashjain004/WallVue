@@ -1,16 +1,22 @@
 #!/bin/bash
 # Builds the Swift package and wraps the binary in a runnable .app bundle.
 # Usage: Scripts/build-app.sh [debug|release]
+#   UNIVERSAL=1  build for both Apple silicon and Intel (needs Xcode)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APP_NAME="WallVue"
 BUNDLE_ID="io.github.wallvue"
-VERSION="0.1.0"
+VERSION="$(tr -d '[:space:]' < VERSION)"
+# The number of commits makes a build number that always goes up.
+BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 CONFIG="${1:-release}"
 
-swift build -c "$CONFIG" --product WallVueApp
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/WallVueApp"
+ARCHS=()
+if [ "${UNIVERSAL:-0}" = "1" ]; then ARCHS=(--arch arm64 --arch x86_64); fi
+
+swift build -c "$CONFIG" --product WallVueApp ${ARCHS[@]+"${ARCHS[@]}"}
+BIN="$(swift build -c "$CONFIG" ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/WallVueApp"
 
 APP="build/$APP_NAME.app"
 rm -rf "$APP"
@@ -31,7 +37,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleVersion</key><string>$BUILD</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <key>NSHighResolutionCapable</key><true/>
@@ -54,6 +60,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Ad-hoc signature: enough to run locally. Releases get Developer ID + notarization.
+# Ad-hoc signature: the app runs, but macOS asks the person who downloaded
+# it to approve it once (System Settings → Privacy & Security → Open Anyway).
 codesign --force --sign - "$APP"
-echo "Built $APP"
+echo "Built $APP ($VERSION, build $BUILD)"
